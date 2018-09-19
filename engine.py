@@ -3,7 +3,8 @@ import random as rnd
 
 from PIL import Image, ImageDraw  # Подключим необходимые библиотеки.
 
-def toLines(__points:list):
+
+def toLines(__points: list):
     heights = [i[0] for i in __points]
     minHeight = min(heights)
     maxHeight = max(heights)
@@ -16,7 +17,8 @@ def toLines(__points:list):
         lines[point[0] - minHeight].append(point[1] - minWidth)
     return lines
 
-def toPerim(__lines:list):
+
+def toPerim(__lines: list):
     perim = 0
     if len(__lines) >= 2:
         perim += len(__lines[0])
@@ -25,6 +27,7 @@ def toPerim(__lines:list):
             if len(__lines) >= 2:
                 perim += 2
     return perim
+
 
 def toGray(call_pixel: tuple):
     assert len(call_pixel) == 3
@@ -130,22 +133,24 @@ def toBredli(__picture_name: str, __t: float, __resultName: str):
 
 def subList(__A: list, __B: list):
     assert len(__A) == len(__B)
-    return [__A[i] - __B[i] for i in range(0, min(len(A), len(B)))]
+    return [__A[i] - __B[i] for i in range(0, min(len(__A), len(__B)))]
 
 
 def delta(__A: list, __B: list):
     assert len(__A) == len(__B)
-    s = sum([(__A[i] - __B[i]) ** 2 for i in range(0, min(len(A), len(B)))])
+    s = sum([(__A[i] - __B[i]) ** 2 for i in range(0, min(len(__A), len(__B)))])
     return math.sqrt(s)
 
-def toSumList(__A:list):
+
+def toSumList(__A: list):
     return [toSum(x) for x in __A]
+
 
 def toSum(__x):
     return __x
 
 
-def Kmeans(__points: list, __count, __accur: float):
+def Kmeans(__points: list, __count, __accur: float, __len_vector: int):
     unic = []
     for point in __points:
         if point not in unic:
@@ -154,9 +159,9 @@ def Kmeans(__points: list, __count, __accur: float):
     clusterCenters = []
     result = {i: [] for i in range(0, __count)}
     for i in range(0, __count):
-        center = rnd.randint(0, len(unic))
+        center = rnd.randint(0, len(unic) - 1)
         while center in clusterCenters:
-            center = rnd.randint(0, len(unic))
+            center = rnd.randint(0, len(unic) - 1)
         clusterCenters.append(center)
 
     clusterCenters = [unic[i] for i in clusterCenters]
@@ -174,8 +179,13 @@ def Kmeans(__points: list, __count, __accur: float):
             result[kluster].append(point)
         clusterCenters.clear()
         for i in range(0, __count):
-            sumValues = [sum(result[i][j]) / float(len(result[i])) for j in range(0, len(result[i]))]
-            clusterCenters.append([sumValues])
+            temp = [0 for _ in range(0, __len_vector)]
+            for j in range(0, len(result[i])):
+                for k in range(0, __len_vector):
+                    temp[k] += result[i][j][k]
+            for j in range(0, __len_vector):
+                temp[j] = temp[j] / float(len(result[i]))
+            clusterCenters.append(temp)
         deltasCenter = []
         for i in range(0, __count):
             deltasCenter.append(delta(oldClusters[i], clusterCenters[i]))
@@ -185,7 +195,6 @@ def Kmeans(__points: list, __count, __accur: float):
             for i in range(0, __count):
                 result[i].clear()
     return result
-
 
 
 def binKmeans(__points: list, __accur):
@@ -233,26 +242,65 @@ def binKmeans(__points: list, __accur):
     return [(binAValue if i[0] in AValues else binBValue, i[1], i[2]) for i in __points]
 
 
-if __name__ == "__main__":
-    pictures = ["./resources/Laba_2_easy/P0001460.jpg",
-                # "./resources/Laba_2_easy/P0001461.jpg",
-                # "./resources/Laba_2_easy/P0001468.jpg",
-                # "./resources/Laba_2_easy/P0001469.jpg",
-                "./resources/Laba_2_easy/P0001471.jpg",
+def moment(__i, __j, __x_mean, __y_mean, __points):
+    result = 0
+    for point in __points:
+        result += ((point[1] - __x_mean) ** __i) * ((point[0] - __y_mean) ** __j)
+    return result
 
-                # "./resources/Laba_2_hard/P0001464.jpg",
-                # "./resources/Laba_2_hard/P0001465.jpg",
-                # "./resources/Laba_2_hard/P0001467.jpg",
-                "./resources/Laba_2_hard/P0001470.jpg",
-                "./resources/Laba_2_hard/P0001472.jpg"]
+def toVector(__characteristics, __params:list):
+    vector = []
+    for param in __params:
+        vector.append(__characteristics[param[0]] * param[1])
+    return vector
+
+def characteristics(__points: list):
+    square = len(__points)
+    lines = toLines(__points)
+    perimeter = toPerim(lines)
+    compact = (perimeter ** 2) / float(square)
+    sum_x = 0
+    sum_y = 0
+    for point in __points:
+        sum_y += point[0]
+        sum_x += point[1]
+    x_mean = sum_x / float(square)
+    y_mean = sum_y / float(square)
+    m02 = moment(0, 2, x_mean, y_mean, __points)
+    m20 = moment(2, 0, x_mean, y_mean, __points)
+    m11 = moment(1, 1, x_mean, y_mean, __points)
+    elongation_up = (m20 + m02 + math.sqrt(((m20 - m02) ** 2) + (4 * (m11 ** 2))))
+    elongation_down = (m20 + m02 - math.sqrt(((m20 - m02) ** 2) + (4 * (m11 ** 2))))
+    elongation = 0
+    if (elongation_down != 0) and (elongation_up != 0):
+        elongation = float(elongation_up) / float(elongation_down)
+    orientation = 0
+    if (float(m20 - m02) != 0):
+        orientation = (math.atan((2 * m11) / float(m20 - m02))) / float(2)
+    return {"square": square, "perimeter": perimeter, "compact": compact, "mean_x": x_mean, "y_mean": y_mean,
+            "elongation": elongation, "orientation": orientation}
+
+
+if __name__ == "__main__":
+    pictures = [("./resources/Laba_2_easy/P0001460.jpg", 3),
+                # ("./resources/Laba_2_easy/P0001461.jpg", 3),
+                # ("./resources/Laba_2_easy/P0001468.jpg", 2),
+                # ("./resources/Laba_2_easy/P0001469.jpg", 5),
+                ("./resources/Laba_2_easy/P0001471.jpg", 6),
+
+                # ("./resources/Laba_2_hard/P0001464.jpg", 3),
+                # ("./resources/Laba_2_hard/P0001465.jpg", 3),
+                # ("./resources/Laba_2_hard/P0001467.jpg", 4),
+                ("./resources/Laba_2_hard/P0001470.jpg", 5),
+                ("./resources/Laba_2_hard/P0001472.jpg", 6)]
     for oper in range(0, len(pictures)):
         resultName = "Bredli" + str(oper) + ".png"
         binName = "Bin" + str(oper) + ".png"
         # toBredli(pictures[oper], 0.1, resultName)
 
-        imageOriginal = Image.open(pictures[oper])  # Открываем изображение.
-        image = Image.open(pictures[oper])  # Открываем изображение.
-        imageBin = Image.open(pictures[oper])  # Открываем изображение.
+        imageOriginal = Image.open(pictures[oper][0])  # Открываем изображение.
+        image = Image.open(pictures[oper][0])  # Открываем изображение.
+        imageBin = Image.open(pictures[oper][0])  # Открываем изображение.
         drawBin = ImageDraw.Draw(imageBin)  # Создаем инструмент для рисования.
 
         width = imageOriginal.size[0]  # Определяем ширину.
@@ -376,11 +424,21 @@ if __name__ == "__main__":
         for i in range(0, width):
             for j in range(0, height):
                 drawMapRes.point((i, j), (255, 255, 255))
-        objectChar = {i: {"square": len(obj[i]), "perim": toPerim(toLines(obj[i]))} for i in obj.keys()}
+        objectChar = {i: characteristics(obj[i]) for i in obj.keys()}
         print(objectChar)
-        for key in obj.keys():
-            for value in obj[key]:
-                drawMapRes.point((value[1], value[0]), colors[key % len(colors)])
+
+        # params = ["square", "perimeter", "compact", "mean_x", "y_mean", "elongation", "orientation"]
+        params = [("square", 1), ("perimeter", 0.8), ("compact", 1), ("elongation", 0.7)]
+        klusterVectors = []
+        for i in objectChar.keys():
+            klusterVectors.append(toVector(objectChar[i], params))
+        result = Kmeans(klusterVectors, pictures[oper][1], 0.00003, len(params))
+        for i in obj.keys():
+            vector = toVector(objectChar[i], params)
+            for j in result.keys():
+                if vector in result[j]:
+                    for value in obj[i]:
+                        drawMapRes.point((value[1], value[0]), colors[j % len(colors)])
 
         imageMapRes.save("RES_MAP_" + resultName, "PNG")
 
