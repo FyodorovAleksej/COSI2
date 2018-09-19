@@ -149,23 +149,28 @@ def toSumList(__A: list):
 def toSum(__x):
     return __x
 
-
-def Kmeans(__points: list, __count, __accur: float, __len_vector: int):
+def Kmeans_init(__points:list, __count:int):
     unic = []
     for point in __points:
         if point not in unic:
             unic.append(point)
 
     clusterCenters = []
-    result = {i: [] for i in range(0, __count)}
     for i in range(0, __count):
         center = rnd.randint(0, len(unic) - 1)
         while center in clusterCenters:
             center = rnd.randint(0, len(unic) - 1)
         clusterCenters.append(center)
+    return [unic[i] for i in clusterCenters]
 
-    clusterCenters = [unic[i] for i in clusterCenters]
+def Kmeans(__points: list, __count, __accur: float, __len_vector: int, clusterCenters: list):
+    unic = []
+    for point in __points:
+        if point not in unic:
+            unic.append(point)
+
     flag = True
+    result = {i: [] for i in range(0, __count)}
 
     while flag:
         oldClusters = [clusterCenters[i] for i in range(0, __count)]
@@ -184,7 +189,10 @@ def Kmeans(__points: list, __count, __accur: float, __len_vector: int):
                 for k in range(0, __len_vector):
                     temp[k] += result[i][j][k]
             for j in range(0, __len_vector):
-                temp[j] = temp[j] / float(len(result[i]))
+                if len(result[i]) == 0:
+                    temp[j] = 0
+                else:
+                    temp[j] = temp[j] / float(len(result[i]))
             clusterCenters.append(temp)
         deltasCenter = []
         for i in range(0, __count):
@@ -282,17 +290,19 @@ def characteristics(__points: list):
 
 
 if __name__ == "__main__":
-    pictures = [("./resources/Laba_2_easy/P0001460.jpg", 3),
-                # ("./resources/Laba_2_easy/P0001461.jpg", 3),
-                # ("./resources/Laba_2_easy/P0001468.jpg", 2),
-                # ("./resources/Laba_2_easy/P0001469.jpg", 5),
-                ("./resources/Laba_2_easy/P0001471.jpg", 6),
+    KMEANS = []
 
-                # ("./resources/Laba_2_hard/P0001464.jpg", 3),
-                # ("./resources/Laba_2_hard/P0001465.jpg", 3),
-                # ("./resources/Laba_2_hard/P0001467.jpg", 4),
-                ("./resources/Laba_2_hard/P0001470.jpg", 5),
-                ("./resources/Laba_2_hard/P0001472.jpg", 6)]
+    pictures = [("./resources/Laba_2_easy/P0001460.jpg", 10), # 3),
+                ("./resources/Laba_2_easy/P0001461.jpg", 10),
+                ("./resources/Laba_2_easy/P0001468.jpg", 10),
+                ("./resources/Laba_2_easy/P0001469.jpg", 10),
+                ("./resources/Laba_2_easy/P0001471.jpg", 10),
+
+                ("./resources/Laba_2_hard/P0001464.jpg", 10),
+                ("./resources/Laba_2_hard/P0001465.jpg", 10),
+                ("./resources/Laba_2_hard/P0001467.jpg", 10),
+                ("./resources/Laba_2_hard/P0001470.jpg", 10), # 5),
+                ("./resources/Laba_2_hard/P0001472.jpg", 10)]
     for oper in range(0, len(pictures)):
         resultName = "Bredli" + str(oper) + ".png"
         binName = "Bin" + str(oper) + ".png"
@@ -432,7 +442,9 @@ if __name__ == "__main__":
         klusterVectors = []
         for i in objectChar.keys():
             klusterVectors.append(toVector(objectChar[i], params))
-        result = Kmeans(klusterVectors, pictures[oper][1], 0.00003, len(params))
+        if len(KMEANS) == 0:
+            KMEANS = Kmeans_init(klusterVectors, pictures[oper][1])
+        result = Kmeans(klusterVectors, pictures[oper][1], 0.00003, len(params), KMEANS)
         for i in obj.keys():
             vector = toVector(objectChar[i], params)
             for j in result.keys():
