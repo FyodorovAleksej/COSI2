@@ -1,5 +1,6 @@
 import math
 import random as rnd
+
 from PIL import Image, ImageDraw  # Подключим необходимые библиотеки.
 
 
@@ -292,10 +293,54 @@ def characteristics(__points: list):
     if (elongation_down != 0) and (elongation_up != 0):
         elongation = float(elongation_up) / float(elongation_down)
     orientation = 0
-    if (float(m20 - m02) != 0):
+    if float(m20 - m02) != 0:
         orientation = (math.atan((2 * m11) / float(m20 - m02))) / float(2)
     return {"square": square, "perimeter": perimeter, "compact": compact, "mean_x": x_mean, "y_mean": y_mean,
             "elongation": elongation, "orientation": orientation}
+
+
+def photometricParams(__original: str, __points: list) -> dict:
+    image = Image.open(__original)  # Открываем изображение.
+    pix = image.load()  # Выгружаем значения пикселей.
+
+    rList = []
+    gList = []
+    bList = []
+    greyList = []
+
+    for point in __points:
+        pixel = pix[point[1], point[0]]
+        rList.append(pixel[0])
+        gList.append(pixel[1])
+        bList.append(pixel[2])
+        greyList.append(toGray(pixel))
+    rAverage = sum(rList) / float(len(rList))
+    gAverage = sum(gList) / float(len(gList))
+    bAverage = sum(bList) / float(len(bList))
+    greyAverage = sum(greyList) / float(len(greyList))
+    rDisp = max(rList) - min(rList)
+    gDisp = max(gList) - min(gList)
+    bDisp = max(bList) - min(bList)
+    greyDisp = max(greyList) - min(greyList)
+    return {"average": (rAverage, gAverage, bAverage), "greyAverage": greyAverage, "delta": (rDisp, gDisp, bDisp),
+            "greyDisp": greyDisp, "rList": rList, "gList": gList, "bList": bList, "greyList": greyList}
+
+
+def toBinImagePorog(__input_name: str, __output_name: str, __porog: int):
+    image = Image.open(__input_name)  # Открываем изображение.
+    drawBin = ImageDraw.Draw(image)  # Создаем инструмент для рисования.
+
+    width = image.size[0]  # Определяем ширину.
+    height = image.size[1]  # Определяем высоту.
+    pix = image.load()  # Выгружаем значения пикселей.
+
+    for i in range(0, width):
+        for j in range(0, height):
+            if int(round(toGray(pix[i, j]))) >= __porog:
+                drawBin.point((i, j), (0, 0, 0))
+            else:
+                drawBin.point((i, j), (255, 255, 255))
+    image.save(__output_name, "PNG")
 
 
 def toBinImage(__input_name: str, __output_name: str):
@@ -422,7 +467,7 @@ def learnKMean(__input_name: str, __object_char, __obj, __count: int, __output_n
     if len(__KMEANS) == 0:
         __KMEANS = Kmeans_init(klusterVectors, __count)
         __KRESULT = Kmeans_result_gen_init(__count)
-    result = Kmeans(klusterVectors, __count, 0.00003, len(__params), __KMEANS, __KRESULT)
+    result = Kmeans(klusterVectors, __count, 0.0000003, len(__params), __KMEANS, __KRESULT)
     for i in __obj.keys():
         vector = toVector(__object_char[i], __params)
         for j in result.keys():
@@ -435,24 +480,27 @@ def learnKMean(__input_name: str, __object_char, __obj, __count: int, __output_n
 
 
 if __name__ == "__main__":
-    KMEANS = []
-    KRESULT = {}
 
-    pictures = [("./resources/Laba_2_easy/P0001460.jpg", 6),  # 3),
-                ("./resources/Laba_2_easy/P0001461.jpg", 6),
-                ("./resources/Laba_2_easy/P0001468.jpg", 6),
-                ("./resources/Laba_2_easy/P0001469.jpg", 6),
+    pictures = [("./resources/Laba_2_easy/P0001460.jpg", 2),  # 3),
+                ("./resources/Laba_2_easy/P0001461.jpg", 2),
+                ("./resources/Laba_2_easy/P0001468.jpg", 2),
+                ("./resources/Laba_2_easy/P0001469.jpg", 5),
                 ("./resources/Laba_2_easy/P0001471.jpg", 6),
 
-                ("./resources/Laba_2_hard/P0001464.jpg", 6),
-                ("./resources/Laba_2_hard/P0001465.jpg", 6),
-                ("./resources/Laba_2_hard/P0001467.jpg", 6),
-                ("./resources/Laba_2_hard/P0001470.jpg", 6),  # 5),
+                ("./resources/Laba_2_hard/P0001464.jpg", 2),
+                ("./resources/Laba_2_hard/P0001465.jpg", 3),
+                ("./resources/Laba_2_hard/P0001467.jpg", 3),
+                ("./resources/Laba_2_hard/P0001470.jpg", 5),  # 5),
                 ("./resources/Laba_2_hard/P0001472.jpg", 6)]
     for oper in range(0, len(pictures)):
+        print("")
+        print("---------------------------------------------------")
+        print("performing " + str(oper) + " picture")
+        KMEANS = []
+        KRESULT = {}
         binName = "Bin" + str(oper) + ".png"
         print("to bin image ...")
-        toBinImage(pictures[oper][0], binName)
+        toBinImagePorog(pictures[oper][0], binName, 165)
 
         print("to bin check 4 means ...")
         binMap = toBinCheckMeans(binName, "RES_" + binName)
@@ -466,14 +514,14 @@ if __name__ == "__main__":
 
         objectChar = {i: characteristics(obj[i]) for i in obj.keys()}
         print(objectChar)
+        print({i: photometricParams(pictures[oper][0], obj[i]) for i in obj.keys()})
 
         # params = ["square", "perimeter", "compact", "mean_x", "y_mean", "elongation", "orientation"]
-        params = [("square", 4), ("perimeter", 0.8), ("compact", 2)]
+        params = [("square", 1), ("perimeter", 0), ("compact", 0)]
 
         print("kmean ...")
         res = learnKMean("RES_" + binName, objectChar, obj, pictures[oper][1], "RES_MAP_" + binName, params, colors,
                          KMEANS, KRESULT)
-
 
         KMEANS = res[0]
         KRESULT = res[1]
@@ -486,6 +534,3 @@ if __name__ == "__main__":
             print("-----------------------------------------------")
             for point in KRESULT[i]:
                 print(point)
-
-
-
