@@ -150,21 +150,31 @@ def toSum(__x):
     return __x
 
 
-def Kmeans_init(__points: list, __count: int):
-    unic = []
-    for point in __points:
-        if point not in unic:
-            unic.append(point)
+def path(__points: list):
+    dimenson = len(__points[0])
+    deltaVector = []
 
-    clusterCenters = []
-    for i in range(0, __count):
-        if len(clusterCenters) == len(unic):
-            raise AttributeError("unic values less then klusters")
-        center = rnd.randint(0, len(unic) - 1)
-        while center in clusterCenters:
-            center = rnd.randint(0, len(unic) - 1)
-        clusterCenters.append(center)
-    return [unic[i] for i in clusterCenters]
+    for i in range(0, dimenson):
+        values = [vector[i] for vector in __points]
+        minI = min(values)
+        maxI = max(values)
+        deltaVector.append(maxI - minI)
+    return deltaVector
+
+
+def parseDelta(__delta_vector: list, __counts: int):
+    partDeltaVetor = [__delta_vector[i] / float(__counts + 1) for i in range(0, len(__delta_vector))]
+    sumVector = [0 for _ in range(0, len(__delta_vector))]
+    resVector = []
+    for i in range(0, __counts):
+        for j in range(0, len(partDeltaVetor)):
+            sumVector[j] += partDeltaVetor[j]
+        resVector.append(sumVector.copy())
+    return resVector
+
+
+def Kmeans_init(__points: list, __count: int):
+    return parseDelta(path(__points), __count)
 
 
 def Kmeans_result_gen_init(__count: int):
@@ -178,9 +188,7 @@ def Kmeans(__points: list, __count, __accur: float, __len_vector: int, __cluster
             unic.append(point)
 
     flag = True
-
-    res = __result.copy()
-    while flag:
+    while True:
         oldClusters = [__clusterCenters[i] for i in range(0, __count)]
         for point in unic:
             deltas = []
@@ -203,13 +211,15 @@ def Kmeans(__points: list, __count, __accur: float, __len_vector: int, __cluster
                     temp[j] = temp[j] / float(len(__result[i]))
             __clusterCenters.append(temp)
         deltasCenter = []
+        if not flag:
+            return __result
         for i in range(0, __count):
             deltasCenter.append(delta(oldClusters[i], __clusterCenters[i]))
-        if max(deltasCenter) < __accur:
+        if max(deltasCenter) <= __accur:
             flag = False
         else:
             for i in range(0, __count):
-                __result[i] = res[i].copy()
+                __result[i].clear()
     return __result
 
 
@@ -481,17 +491,17 @@ def learnKMean(__input_name: str, __object_char, __obj, __count: int, __output_n
 
 if __name__ == "__main__":
 
-    pictures = [("./resources/Laba_2_easy/P0001460.jpg", 2),  # 3),
-                ("./resources/Laba_2_easy/P0001461.jpg", 2),
-                ("./resources/Laba_2_easy/P0001468.jpg", 2),
-                ("./resources/Laba_2_easy/P0001469.jpg", 5),
-                ("./resources/Laba_2_easy/P0001471.jpg", 6),
+    pictures = [("./resources/Laba_2_easy/P0001460.jpg", 2),  # 0
+                ("./resources/Laba_2_easy/P0001461.jpg", 2),  # 1
+                ("./resources/Laba_2_easy/P0001468.jpg", 3),  # 2
+                ("./resources/Laba_2_easy/P0001469.jpg", 4),  # 3
+                ("./resources/Laba_2_easy/P0001471.jpg", 7),  # 4
 
-                ("./resources/Laba_2_hard/P0001464.jpg", 2),
-                ("./resources/Laba_2_hard/P0001465.jpg", 3),
-                ("./resources/Laba_2_hard/P0001467.jpg", 3),
-                ("./resources/Laba_2_hard/P0001470.jpg", 5),  # 5),
-                ("./resources/Laba_2_hard/P0001472.jpg", 6)]
+                ("./resources/Laba_2_hard/P0001464.jpg", 3),  # 5
+                ("./resources/Laba_2_hard/P0001465.jpg", 4),  # 6
+                ("./resources/Laba_2_hard/P0001467.jpg", 5),  # 7
+                ("./resources/Laba_2_hard/P0001470.jpg", 6),  # 8
+                ("./resources/Laba_2_hard/P0001472.jpg", 6)]  # 9
     for oper in range(0, len(pictures)):
         print("")
         print("---------------------------------------------------")
@@ -500,7 +510,7 @@ if __name__ == "__main__":
         KRESULT = {}
         binName = "Bin" + str(oper) + ".png"
         print("to bin image ...")
-        toBinImagePorog(pictures[oper][0], binName, 165)
+        toBinImagePorog(pictures[oper][0], binName, 170)
 
         print("to bin check 4 means ...")
         binMap = toBinCheckMeans(binName, "RES_" + binName)
@@ -513,11 +523,21 @@ if __name__ == "__main__":
         obj = findObjectsOnImage("RES_" + binName, binMap)
 
         objectChar = {i: characteristics(obj[i]) for i in obj.keys()}
+        temp = {}
+        tempObj = {}
+        for i in obj.keys():
+            if objectChar[i]["square"] > 150 and objectChar[i]["perimeter"] > 60:
+                temp[i] = objectChar[i]
+                tempObj[i] = obj[i]
+        objectChar.clear()
+        objectChar = temp
+        obj.clear()
+        obj = tempObj
         print(objectChar)
         print({i: photometricParams(pictures[oper][0], obj[i]) for i in obj.keys()})
 
         # params = ["square", "perimeter", "compact", "mean_x", "y_mean", "elongation", "orientation"]
-        params = [("square", 1), ("perimeter", 0), ("compact", 0)]
+        params = [("square", 1), ("perimeter", 0.8), ("compact", 0.8)]
 
         print("kmean ...")
         res = learnKMean("RES_" + binName, objectChar, obj, pictures[oper][1], "RES_MAP_" + binName, params, colors,
